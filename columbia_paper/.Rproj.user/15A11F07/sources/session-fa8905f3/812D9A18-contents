@@ -1,0 +1,156 @@
+library(dplyr)
+library(here)
+library(readxl)
+library(lubridate)
+library(ggplot2)
+library(forcats)
+install.packages("Kendall")
+library(Kendall)
+
+eel_lamprey <- read.csv("eel_lamprey.csv", stringsAsFactors = FALSE)
+
+
+eel_lamprey$TNC_code <- eel_lamprey$Station
+
+eel_lamprey <- eel_lamprey %>%
+  mutate(TNC_code = fct_recode(TNC_code,
+                               TNC_25 = "PK1", 
+                               TNC_23 = "PK2",
+                               TNC_16 = "PK3",
+                               TNC_19 = "PK4"))
+
+hist_eel <- hist(eel_lamprey$American.Eel.Standardized.CPUE....50m.)
+shapiro.test(eel_lamprey$American.Eel.Standardized.CPUE....50m.)
+# p < 0.05 means data is not normally distributed --> W = 0.62974, p-value = 2.151e-15
+
+hist_lamprey <- hist(eel_lamprey$Sea.Lamprey.Standardized.CPUE....50m.)
+shapiro.test(eel_lamprey$Sea.Lamprey.Standardized.CPUE....50m.)
+# p < 0.05 means data is not normally distributed --> W = 0.40017, p-value < 2.2e-16
+
+# Kruskal_Wallis ----------------------------------------------------------
+
+#Kruskal_Wallis test for comparison across sites (does not take into account year)
+kruskal.test(American.Eel.Standardized.CPUE....50m. ~ TNC_code, data = eel_lamprey)
+#Kruskal-Wallis chi-squared = 50.205, df = 3, p-value = 7.224e-11
+kruskal.test(Sea.Lamprey.Standardized.CPUE....50m. ~ TNC_code, data = eel_lamprey)
+#Kruskal-Wallis chi-squared = 2.6836, df = 3, p-value = 0.443
+
+#breakup into site codes to do non-parametric analysis of change at site over time (year)
+eel_lamprey_TNC_25 <- subset(eel_lamprey, TNC_code %in% c ("TNC_25"))
+eel_lamprey_TNC_23 <- subset(eel_lamprey, TNC_code %in% c ("TNC_23"))
+eel_lamprey_TNC_16 <- subset(eel_lamprey, TNC_code %in% c ("TNC_16"))
+eel_lamprey_TNC_19 <- subset(eel_lamprey, TNC_code %in% c ("TNC_19"))
+
+#Kruskal_Wallis test for year comparison for each site
+#TNC_25
+kruskal.test(American.Eel.Standardized.CPUE....50m. ~ Year, data = eel_lamprey_TNC_25)
+shapiro.test(eel_lamprey_TNC_25$American.Eel.Standardized.CPUE....50m.)
+#Kruskal-Wallis chi-squared = 11.706, df = 7, p-value = 0.1107 (not sig)
+kruskal.test(Sea.Lamprey.Standardized.CPUE....50m. ~ Year, data = eel_lamprey_TNC_25)
+#Kruskal-Wallis chi-squared = 8.4444, df = 7, p-value = 0.295 (not sig)
+
+
+#TNC_23
+kruskal.test(American.Eel.Standardized.CPUE....50m. ~ Year, data = eel_lamprey_TNC_23)
+#Kruskal-Wallis chi-squared = 14.466, df = 6, p-value = 0.02485 (sig)
+kruskal.test(Sea.Lamprey.Standardized.CPUE....50m. ~ Year, data = eel_lamprey_TNC_23)
+#Kruskal-Wallis chi-squared = 22.119, df = 6, p-value = 0.001152 (sig)
+
+#TNC_16
+kruskal.test(American.Eel.Standardized.CPUE....50m. ~ Year, data = eel_lamprey_TNC_16)
+#Kruskal-Wallis chi-squared = 19.786, df = 7, p-value = 0.006051 (sig)
+kruskal.test(Sea.Lamprey.Standardized.CPUE....50m. ~ Year, data = eel_lamprey_TNC_16)
+#Kruskal-Wallis chi-squared = 30.263, df = 7, p-value = 8.496e-05 (sig)
+
+#TNC_19
+kruskal.test(American.Eel.Standardized.CPUE....50m. ~ Year, data = eel_lamprey_TNC_19)
+#Kruskal-Wallis chi-squared = 20.523, df = 7, p-value = 0.004544 (sig)
+kruskal.test(Sea.Lamprey.Standardized.CPUE....50m. ~ Year, data = eel_lamprey_TNC_19)
+#Kruskal-Wallis chi-squared = 22.928, df = 7, p-value = 0.001754 (sig)
+
+
+# GLM ---------------------------------------------------------------------
+#doesn't really work because CPUE is rate, not straight count
+poisson_model <- glm(American.Eel.Standardized.CPUE....50m. ~ TNC_code + Year, family = poisson, data = eel_lamprey)
+
+
+library(AER)
+install.packages('AER')
+dispersiontest(poisson_model)
+#if dispersion ratio >1 and p-value is significant, overdispersion exists and Poisson is not ideal (dispersion ratio = 8.58459, z = 4.0574, p-value = 2.481e-05; not ideal)
+
+library(MASS)
+nb_model <- glm.nb(American.Eel.Standardized.CPUE....50m. ~ TNC_code + Year, data = eel_lamprey)
+
+AIC(poisson_model, nb_model)
+
+install.packages("pscl")
+library(pscl)
+
+zip_model <- zeroinfl(American.Eel.Standardized.CPUE....50m. ~ TNC_code + Year | TNC_code, data = eel_lamprey, dist = "poisson")
+
+# GLM_continuous ----------------------------------------------------------
+
+#Gamma GLM with log link
+glm_gamma <- glm(American.Eel.Standardized.CPUE....50m. ~ TNC_code + Year, family = Gamma(link = "log"), data = eel_lamprey)
+#get error because of 0's
+
+install.packages("cplm")
+library(cplm)
+tweedie_model <- cpglm(American.Eel.Standardized.CPUE....50m. ~ TNC_code + Year, data = eel_lamprey)
+summary(tweedie_model)
+
+
+# length ------------------------------------------------------------------
+
+eel_length <- read.csv("eel_length.csv", stringsAsFactors = FALSE)
+
+eel_length$TNC_code <- eel_length$Station
+
+eel_length <- eel_length %>%
+  mutate(TNC_code = fct_recode(TNC_code,
+                               TNC_25 = "PK1", 
+                               TNC_23 = "PK2",
+                               TNC_16 = "PK3",
+                               TNC_19 = "PK4"))
+
+hist_eel_length <- hist(eel_length$FTL)
+shapiro.test(eel_length$FTL)
+#W = 0.75459, p-value < 2.2e-16, data not normally distributed
+
+eel_length_TNC_25 <- subset(eel_length, TNC_code %in% c ("TNC_25"))
+eel_length_TNC_23 <- subset(eel_length, TNC_code %in% c ("TNC_23"))
+eel_length_TNC_16 <- subset(eel_length, TNC_code %in% c ("TNC_16"))
+eel_length_TNC_19 <- subset(eel_length, TNC_code %in% c ("TNC_19"))
+
+kruskal.test(FTL ~ Year, data = eel_length_TNC_25)
+
+
+# Kendall Tau -------------------------------------------------------------
+# your data
+years <- c(2019, 2020, 2022, 2023)
+site_16_eel<- c(1.8, 3.3, 8.8, 9.0)
+site_25_eel <- c(8.0, 12.5, 19.0, 26.0)
+site_23_eel <- c(2.8, 6.0, 9.8, 23.8)
+
+# Kendall Tau correlation test
+kendall.test_16 <- cor.test(years, site_16_eel, method = "kendall")
+
+# to print only tau + p
+kendall.test_16$estimate
+kendall.test_16$p.value
+
+# Kendall Tau correlation test
+kendall.test_25 <- cor.test(years, site_25_eel, method = "kendall")
+
+# to print only tau + p
+kendall.test_25$estimate
+kendall.test_25$p.value
+
+# Kendall Tau correlation test
+kendall.test_23 <- cor.test(years, site_23_eel, method = "kendall")
+
+# to print only tau + p
+kendall.test_23$estimate
+kendall.test_23$p.value
+

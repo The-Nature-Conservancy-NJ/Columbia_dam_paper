@@ -1,0 +1,88 @@
+# plot daily max vs. thresholds
+
+tmax_col <- subset(tmax, site %in% c("TNC_23", "TNC_80", "TNC_25"))
+
+tmax_col %>%
+  ggplot() +
+  geom_hline(
+    yintercept = 22,
+    color = "gray",
+    lty = 3,
+    size = .75
+  ) +
+  geom_hline(
+    yintercept = 25,
+    color = "gray",
+    lty = 2,
+    size = .75
+  ) +
+  geom_hline(
+    yintercept = 31,
+    color = "gray",
+    lty = 1,
+    size = .75
+  ) +
+  geom_line(aes(x = day, y = max_temp,
+                color = as.factor(year)),
+            alpha = 0.75) +
+  facet_wrap( ~ site) +
+  scale_color_brewer(palette = "Paired") +
+  scale_x_continuous(
+    breaks = c(91, 152, 213, 274, 335),
+    labels = c("Apr", "Jun", "Aug",
+               "Oct", "Dec")
+  ) +
+  theme_bw() +
+  theme(
+    text = element_text(size = 14),
+    axis.text.x = element_text(size = 10),
+    strip.background = element_rect(fill = "white")
+  ) +
+  labs(y = "Daily maximum temperature (C)", x = "",
+       color = "Year") +
+  annotate("text", x = 335, y = 30, label = "NT", 
+           color = "darkgray", size = 2) +
+  annotate("text", x = 335, y = 24, label = "TM", 
+           color = "darkgray", size = 2) +
+  annotate("text", x = 335, y = 21, label = "TP", 
+           color = "darkgray", size = 2)
+
+ggsave(here(plotsave, "PlotA2_tmax_by_day_year_site_col.png"),
+       height = 7, width = 11, dpi = 400)
+#note: palette originally chosen (Dark2) only allowed for 8 colors, changed to Paired which has 12. This may need further adjustment or personalized color palette depending on visibility. Also changed in subsequent plots (e.g., Plot B)
+
+temp_count_col <- subset(temp_count, site %in% c("TNC_23", "TNC_80", "TNC_81", "TNC_25"))
+
+temp_cov_col <- subset(temp_cov, site %in% c("TNC_23", "TNC_80", "TNC_81", "TNC_25"))
+
+temp_count_bad_col <- temp_count_col %>%
+  left_join(temp_cov_col) %>%
+  filter(is.na(low) == F)
+
+temp_count_col %>%
+  filter(summer_days >= 0.8) %>%
+  ggplot() +
+  geom_line(aes(x = year, y = days_over, color = Threshold)) +
+  geom_point(aes(x = year, y = days_over, color = Threshold), 
+             size = 3) +
+  geom_point(data = temp_count_bad_col, aes(x = year, y = days_over,
+                                        shape = "*",
+                                        color = Threshold)) +
+  facet_wrap(~site) +
+  scale_color_brewer(palette = "Paired") +
+  theme_bw() +
+  theme(text = element_text(size = 14),
+        axis.text.x = element_text(size = 7),
+        strip.background = element_rect(fill = "white"),
+        legend.position = "top",
+        legend.justification="center",
+        legend.margin=margin(0,0,0,0),
+        legend.box.margin=margin(-8,-8,-8,-8)) +
+  labs(x = "", y = "Days above temp. threshold") +
+  guides(shape = "none")
+
+ggsave(here(plotsave,
+            "PlotC2_days_above_temp_threshold_timeseries_columbia.png"),
+       height = 7, width = 9, dpi = 400)
+
+rm(temp_count_bad)

@@ -1,0 +1,58 @@
+
+inv_data <- inv %>%
+  group_by(tnc_code, year) %>%
+  summarize(index = mean(index),
+            .groups = "drop") %>%
+  group_by(tnc_code) %>%
+  mutate(n = length(index)) %>%
+  filter(n >= 4)
+
+inv.trend.mod <- lmerTest::lmer(index ~ year + (1 | tnc_code), 
+                                data = inv_data)
+
+summary(inv.trend.mod)
+
+inv23 <- inv %>% filter(tnc_code %in% c("TNC_23"))
+inv23$stage <- ifelse(inv23$year %in% c(2016, 2017), "Before",
+               ifelse(inv23$year %in% c(2018, 2019), "During",
+               ifelse(inv23$year %in% c(2020, 2021, 2022, 2023, 2024), "After", "NA")))
+
+lmmac23 <- lm(data = inv23, index ~ stage)
+summary(lmmac23)
+
+inv25 <- inv %>% filter(tnc_code %in% c("TNC_25"))
+inv25$stage <- ifelse(inv25$year %in% c(2016, 2017), "Before",
+               ifelse(inv25$year %in% c(2018, 2019), "During",
+               ifelse(inv25$year %in% c(2020, 2021, 2022, 2023, 2024), "After", "NA")))
+
+lmmac25 <- lm(data = inv25, index ~ stage)
+summary(lmmac25)
+
+inv80 <- inv %>% filter(tnc_code %in% c("TNC_80"))
+
+lmmac80 <- lm(data = inv80, index ~ year)
+summary(lmmac80)
+
+#habitat
+hab23 <- hab %>% filter(tnc_code %in% c("TNC_23"))
+hab23$stage <- ifelse(hab23$year %in% c(2016, 2017), "Before",
+               ifelse(hab23$year %in% c(2018, 2019), "During",
+               ifelse(hab23$year %in% c(2020, 2021, 2022, 2023, 2024), "After", "NA")))
+
+lmhab23 <- lm(data = hab23, habitat_score ~ stage)
+summary(lmhab23)
+
+hab25 <- hab %>% filter(tnc_code %in% c("TNC_25"))
+hab25$stage <- ifelse(hab25$year %in% c(2016, 2017), "Before",
+               ifelse(hab25$year %in% c(2018, 2019), "During",
+               ifelse(hab25$year %in% c(2020, 2021, 2022, 2023, 2024), "After", "NA")))
+
+lmhab25 <- lm(data = hab25, habitat_score ~ stage)
+summary(lmhab25)
+
+hab80 <- hab %>% filter(tnc_code %in% c("TNC_80"))
+
+lmhab80 <- lm(data = hab80, habitat_score ~ year)
+summary(lmhab80)
+
+

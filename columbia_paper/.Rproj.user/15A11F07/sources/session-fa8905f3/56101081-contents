@@ -1,0 +1,63 @@
+
+dosum_col <-  tdata %>%
+  group_by(site, yearf, month, day, dayf) %>%
+  summarise(min_do = min(do_adj, na.rm = T),
+            max_do = max(do_adj, na.rm = T),
+            mean_do = mean(do_adj, na.rm = T),
+            .groups = "drop")  %>%
+  group_by(site, yearf, month) %>%
+  summarize(mean_mean = mean(mean_do),
+            mean_max = mean(max_do),
+            mean_min = mean(min_do),
+            n = length(mean_do),
+            .groups = "drop") %>%
+  mutate(mid = case_when(month == 3 ~ yday("2021-03-15"),
+                         month == 4 ~ yday("2021-04-15"),
+                         month == 5 ~ yday("2021-05-15"),
+                         month == 6 ~ yday("2021-06-15"),
+                         month == 7 ~ yday("2021-07-15"),
+                         month == 8 ~ yday("2021-08-15"),
+                         month == 9 ~ yday("2021-09-15"),
+                         month == 10 ~ yday("2021-10-15"),
+                         month == 11 ~ yday("2021-11-15")
+  )) %>%
+  mutate(Month = case_when(month == 4 ~ "April",
+                           month == 5 ~ "May",
+                           month == 6 ~ "June",
+                           month == 7 ~ "July",
+                           month == 8 ~ "August",
+                           month == 9 ~ "September",
+                           month == 10 ~ "October",
+                           month == 11 ~ "November",
+                           month == 12 ~ "December")) %>%
+  filter(site %in% c("TNC_25", "TNC_23")) %>%#, "TNC_80", "TNC_81")) %>%
+  mutate(site = case_when(site == "TNC_23" ~ "Upstream",
+                          site == "TNC_25" ~ "Downstream"))%>%#,
+  #site == "TNC_80" ~ "Inside (80)",
+  #site == "TNC_81" ~ "Inside (81)")) %>%
+  filter(as.logical(yearf == "2019" & 
+                      month == 11 &
+                      site == "Upstream") == F)
+
+do_sum_envelope <- tdata %>%
+  group_by(site, day) %>%
+  summarize(multi_min = min(do_adj),
+            multi_max = max(do_adj),
+            .groups = "drop") %>%
+  filter(site %in% c("TNC_25", "TNC_23", "TNC_80", "TNC_81")) %>%
+  mutate(site = case_when(site == "TNC_23" ~ "Upstream",
+                          site == "TNC_25" ~ "Downstream"))#,
+#site == "TNC_80" ~ "Inside (80)",
+#site == "TNC_81" ~ "Inside (81)"))
+
+monthly_diff_do <- 
+  filter(dosum_col, site == "Downstream") %>%
+  left_join(filter(dosum_col, site == "Upstream"),
+            by = c("yearf", "month", "mid", "Month")) %>%
+  mutate(diff = mean_mean.x - mean_mean.y) %>% 
+  filter(n.x >=10,
+         n.y >=10)
+
+
+summary(filter(monthly_diff_do, yearf %in% 2016:2017)$diff)
+summary(filter(monthly_diff_do, yearf %in% 2019:2050)$diff)

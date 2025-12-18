@@ -1,0 +1,289 @@
+---
+  title: "Task 3. project impacts"
+author: "Mike Allen"
+date: "2/28/2022"
+output:
+  html_document: default
+pdf_document: default
+---
+  # How to run this code
+  Run the first section ("chunk") of this Rmd document (section 3.0). That will load all libraries, functions, and data. After that, you can scroll down to the plot or table you wish to make or the model you wish to run and run just that section. Plots, tables and models are labeled with letters (A-Z) and correspond to those in the "Task 3" sub-folder in the "output" folder. See the README file in that sub-folder for figure captions and information.
+
+The following text is a general description of Task 3.
+
+# Task 3: Project Specific Analyses
+a. What are water quality conditions upstream/downstream/within project area(s) pre and post dam removal (assessing turbidity, conductivity, dissolved oxygen and temperature)?
+  
+  b. What are baseline water quality conditions 
+upstream/downstream/within floodplain reforestation corridor(s) before and after tree plantings (assessing temperature, dissolved oxygen)?
+  
+  c. What are baseline water quality conditions downstream Hyper Humus (assessing temperature, dissolved oxygen)?
+  
+  Task and Product 3 Due: April 10, 2022
+
+Products:
+  • Evaluate project specific questions via statistical analysis and data visualization (figures, maps, plots).
+• Meetings as needed to refine objectives and desired outputs.
+• Assess spatial and temporal changes in water quality metrics with respect to dam removal (before/after, upstream/downstream), restoration projects, and other sites of interest (Hyper Humus). Provide associated interpretative text.
+
+# 3.0. Load libraries, format data, etc.
+
+library(dplyr)
+library(knitr)
+library(tidyr)
+library(kableExtra)
+library(wesanderson)
+library(lubridate)
+library(ggplot2)
+library(forcats)
+# library(lme4)
+library(here)
+library(ggpubr)
+library(grid)
+'%notin%' <- Negate('%in%')
+task_path <- "output/Task3_project_impacts/"
+
+# read in compiled logger data (including flagged data)
+p <- readRDS("output/compiled_logger_data.rds") %>%
+  mutate(order = as.numeric(substr(site, 5, 6)),
+         site = fct_reorder(site, order))
+
+# format final compiled temperature data
+tdata <- p %>%
+  filter(FLAG_Temp == 0) %>%
+  mutate(day = yday(datetime),
+         month = month(datetime),
+         hour = hour(datetime),
+         minute = minute(datetime),
+         dtime = hour + minute/60) %>%
+  # remove obvious outliers at start of time series
+  filter(as.logical(1-(site == "TNC_25" & 
+                         year == 2018 & 
+                         day == 122))) %>%
+  filter(as.logical(1-(site == "TNC_23" & 
+                         year == 2018 & 
+                         day == 122))) %>%
+  filter(as.logical(1-(site == "TNC_23" & 
+                         year == 2021 & 
+                         day == 118))) %>%
+  arrange(site, year, day) %>%
+  # peak movement ~ 15 April - 15 May in Raritan per Anthony V.
+  mutate(season = case_when(day %in% 105:135 ~ "migrate", #4/15-5/15
+                            day %in% 136:151 ~ "spawn", #5/16-5/31
+                            day %in% 152:181 ~ "larvae", #6/1-6/30
+                            day %in% 182:258 ~ "juvenile", #7/1-9/15
+                            day %in% 259:334 ~ "fall_mig"), #9/15-11
+         yearf = as.factor(year),
+         dayf = as.factor(day),
+         hourf = as.factor(hour),
+         season = as.factor(season))
+
+# Columbia Dam - Temperature
+# upstream: TNC_23, downstream: TNC_25 (& 24), in: 80 & 81
+col <- tdata %>%
+  filter(site %in% c("TNC_23", "TNC_25", 
+                     "TNC_24", "TNC_81", "TNC_80")) %>%
+  mutate(monthf = as.factor(month)) %>%
+  group_by(site, yearf, monthf, dayf, hourf) %>%
+  summarize(mean_temp = mean(temp),
+            .groups = "drop") %>%
+  group_by(site, yearf, monthf, dayf) %>%
+  summarize(mean_temp = mean(mean_temp),
+            .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = "site", 
+                     values_from = "mean_temp") %>%
+  mutate(d25.23 = TNC_25-TNC_23,
+         d25.80 = TNC_25-TNC_80,
+         d25.81 = TNC_25-TNC_81,
+         stage = as.factor(case_when(yearf %in% 2016:2017 ~ 1,
+                                     yearf == 2018 & as.numeric(as.character(monthf))<7~1,
+                                     yearf == 2018 & as.numeric(as.character(monthf))>=7 |
+                                       yearf == 2019 & as.numeric(as.character(monthf))<5~2,
+                                     yearf == 2019 & as.numeric(as.character(monthf))>=5~3,
+                                     yearf %in% 2020:2051 ~ 3))
+  )
+
+# Tree planting area - Temperature
+# upstream: TNC_4, within: TNC_5, downstream: TNC_8
+tree <- tdata %>%
+  filter(site %in% c("TNC_4", "TNC_5", "TNC_8")) %>%
+  mutate(monthf = as.factor(month)) %>%
+  group_by(site, yearf, monthf, dayf, hourf) %>%
+  summarize(mean_temp = mean(temp),
+            .groups = "drop") %>%
+  group_by(site, yearf, monthf, dayf) %>%
+  summarize(mean_temp = mean(mean_temp),
+            .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = "site", 
+                     values_from = "mean_temp") %>%
+  mutate(d8.4 = TNC_8-TNC_4,
+         d5.4 = TNC_5-TNC_4,
+         d4.8 = TNC_4-TNC_8,
+         d4.5 = TNC_4-TNC_5,
+         stage = as.factor(case_when(yearf %in% 2016:2018 ~ 1,
+                                     yearf %in% 2019:2051 ~ 2))
+  )
+
+# format final compiled DO data
+dodata <- p %>%
+  filter(FLAG_DO == 0) %>%
+  mutate(day = yday(datetime),
+         month = month(datetime),
+         hour = hour(datetime),
+         minute = minute(datetime),
+         dtime = hour + minute/60,
+         do_adj2 = case_when((is.na(do)==F & is.na(do_adj)==T) ~
+                               do,
+                             TRUE ~ do_adj),
+         adj = case_when(is.na(do_adj)==F ~ 1,
+                         TRUE ~ 0)) %>%
+  select(-do, -do_adj) %>%
+  rename(do = do_adj2) %>%
+  # right_join(expand.grid(site = unique(p$site), 
+  #                        year = 2016:2021, day = 82:339)) %>%
+  arrange(site, year, day) %>%
+  # Dates based on Anthony V. and shad reference he provided
+  mutate(season = case_when(day %in% 105:135 ~ "migrate", #4/15-5/15
+                            day %in% 136:151 ~ "spawn", #5/16-5/31
+                            day %in% 152:181 ~ "larvae", #6/1-6/30
+                            day %in% 182:258 ~ "juvenile", #7/1-9/15
+                            day %in% 259:334 ~ "fall_mig"), #9/15-11
+         yearf = as.factor(year),
+         dayf = as.factor(day),
+         hourf = as.factor(hour))
+
+coldo <- dodata %>%
+  filter(site %in% c("TNC_23", "TNC_25", 
+                     "TNC_24", "TNC_81", "TNC_80")) %>%
+  mutate(monthf = as.factor(month)) %>%
+  group_by(site, yearf, monthf, dayf, hourf) %>%
+  summarize(mean_do = mean(do),
+            .groups = "drop") %>%
+  group_by(site, yearf, monthf, dayf) %>%
+  summarize(mean_do = mean(mean_do),
+            .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = "site", 
+                     values_from = "mean_do") %>%
+  mutate(d25.23 = TNC_25-TNC_23,
+         d25.80 = TNC_25-TNC_80,
+         d25.81 = TNC_25-TNC_81,
+         stage = as.factor(case_when(yearf %in% 2016:2017 ~ 1,
+                                     yearf == 2018 & as.numeric(as.character(monthf))<7~1,
+                                     yearf == 2018 & as.numeric(as.character(monthf))>=7 |
+                                       yearf == 2019 & as.numeric(as.character(monthf))<5~2,
+                                     yearf == 2019 & as.numeric(as.character(monthf))>=5~3,
+                                     yearf %in% 2020:2051 ~ 3))
+  )
+
+# Tree planting area - DO
+# upstream: TNC_4, within: TNC_5, downstream: TNC_8
+treedo <- dodata %>%
+  filter(site %in% c("TNC_4", "TNC_5", "TNC_8")) %>%
+  mutate(monthf = as.factor(month)) %>%
+  group_by(site, yearf, monthf, dayf, hourf) %>%
+  summarize(mean_do = mean(do),
+            .groups = "drop") %>%
+  group_by(site, yearf, monthf, dayf) %>%
+  summarize(mean_do = mean(mean_do),
+            .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = "site", 
+                     values_from = "mean_do") %>%
+  mutate(d8.4 = TNC_8-TNC_4,
+         d5.4 = TNC_5-TNC_4,
+         d4.8 = TNC_4-TNC_8,
+         d4.5 = TNC_4-TNC_5,
+         stage = as.factor(case_when(yearf %in% 2016:2018 ~ 1,
+                                     yearf %in% 2019:2051 ~ 2))
+  )
+
+
+# turbidity data
+# note: flag counts were as follower prior to filtering
+#      0    1.5      2      5      8 
+# 214779    188  33345  13893    340 
+turb <- p %>%
+  filter(is.na(turb) == F,
+         FLAG_NTU == 0) %>%
+  mutate(day = yday(datetime),
+         month = month(datetime),
+         hour = hour(datetime),
+         minute = minute(datetime),
+         dtime = hour + minute/60) %>%
+  arrange(site, year, day) %>%
+  mutate(yearf = as.factor(year),
+         dayf = as.factor(day),
+         hourf = as.factor(hour))
+
+# summarize turbidity data for columbia dam
+colturb <- turb %>%
+  filter(site %in% c("TNC_23", "TNC_25", 
+                     "TNC_24", "TNC_81", "TNC_80")) %>%
+  mutate(monthf = as.factor(month)) %>%
+  group_by(site, yearf, monthf, dayf, hourf) %>%
+  summarize(mean_turb = mean(turb),
+            .groups = "drop") %>%
+  group_by(site, yearf, monthf, dayf) %>%
+  summarize(mean_turb = mean(mean_turb),
+            .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = "site", 
+                     values_from = "mean_turb") %>%
+  mutate(d25.23 = log(TNC_25)-log(TNC_23),
+         d25.80 = log(TNC_25)-log(TNC_80),
+         d25.81 = log(TNC_25)-log(TNC_81),
+         stage = as.factor(case_when(yearf %in% 2016:2017 ~ 1,
+                                     yearf == 2018 & as.numeric(as.character(monthf))<7~1,
+                                     yearf == 2018 & as.numeric(as.character(monthf))>=7 |
+                                       yearf == 2019 & as.numeric(as.character(monthf))<5~2,
+                                     yearf == 2019 & as.numeric(as.character(monthf))>=5~3,
+                                     yearf %in% 2020:2051 ~ 3))
+  )
+
+
+# Paulina Dam - Temperature
+# upstream: TNC_18, downstream: TNC_19
+pault <- tdata %>%
+  filter(site %in% c("TNC_18", "TNC_19")) %>%
+  mutate(monthf = as.factor(month)) %>%
+  group_by(site, yearf, monthf, dayf, hourf) %>%
+  summarize(mean_temp = mean(temp),
+            .groups = "drop") %>%
+  group_by(site, yearf, monthf, dayf) %>%
+  summarize(mean_temp = mean(mean_temp),
+            .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = "site", 
+                     values_from = "mean_temp") %>%
+  mutate(d19.18 = TNC_19-TNC_18)
+
+
+# Paulina Dam - DO
+# upstream: TNC_18, downstream: TNC_19
+pauldo <- dodata %>%
+  filter(site %in% c("TNC_18", "TNC_19")) %>%
+  mutate(monthf = as.factor(month)) %>%
+  group_by(site, yearf, monthf, dayf, hourf) %>%
+  summarize(mean_do = mean(do),
+            .groups = "drop") %>%
+  group_by(site, yearf, monthf, dayf) %>%
+  summarize(mean_do = mean(mean_do),
+            .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = "site", 
+                     values_from = "mean_do") %>%
+  mutate(d19.18 = TNC_19-TNC_18)
+
+# Paulina Dam - turbidity
+# upstream: TNC_18, downstream: TNC_19
+paulturb <- turb %>%
+  filter(site %in% c("TNC_18", "TNC_19")) %>%
+  mutate(monthf = as.factor(month)) %>%
+  group_by(site, yearf, monthf, dayf, hourf) %>%
+  summarize(mean_turb = mean(turb),
+            .groups = "drop") %>%
+  group_by(site, yearf, monthf, dayf) %>%
+  summarize(mean_turb = mean(log(mean_turb)),
+            .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = "site", 
+                     values_from = "mean_turb") %>%
+  mutate(d19.18 = TNC_19-TNC_18)
+
+rm(p)
+```

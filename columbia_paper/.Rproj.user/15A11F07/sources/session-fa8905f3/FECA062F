@@ -1,0 +1,26 @@
+{
+    "id": "FECA062F",
+    "path": "~/columbia_paper/Task0_logger_compile_QC.Rmd",
+    "project_path": "Task0_logger_compile_QC.Rmd",
+    "type": "r_markdown",
+    "hash": "3729027025",
+    "contents": "",
+    "dirty": false,
+    "created": 1766003224853.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "31,31",
+        "scrollLine": "23"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1741301538,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1766004801399,
+    "read_only": false,
+    "read_only_alternatives": []
+}
