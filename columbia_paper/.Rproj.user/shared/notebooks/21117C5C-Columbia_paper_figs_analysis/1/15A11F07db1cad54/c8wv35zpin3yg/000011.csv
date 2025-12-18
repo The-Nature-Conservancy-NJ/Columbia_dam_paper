@@ -1,0 +1,5 @@
+"0",""
+"0","ggsave(here::here(""output/Columbia_paper_figs_analysis/"","
+"0","                  ""Figure6.tiff""),"
+"0","                  height = 4, width = 6, dpi = 400)"
+"0",""

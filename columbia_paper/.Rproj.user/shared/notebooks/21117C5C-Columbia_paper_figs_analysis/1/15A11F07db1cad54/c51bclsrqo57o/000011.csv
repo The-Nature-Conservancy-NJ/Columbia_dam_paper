@@ -1,0 +1,6 @@
+"0","ggarrange (plot1, plot3, plot5, ncol = 1, nrow = 3, labels = c(""A"", ""B"", ""C""),"
+"0","           align = ""hv"", "
+"0","           widths = 1,"
+"0","           heights = c(1, 1, 1),"
+"0","           vjust = 1.5,"
+"0","           label.y = 1.02)"

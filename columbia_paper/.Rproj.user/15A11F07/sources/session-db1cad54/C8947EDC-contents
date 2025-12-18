@@ -1331,7 +1331,7 @@ ggarrange (plot1, plot3, plot5, ncol = 1, nrow = 3, labels = c("A", "B", "C"),
            vjust = 1.5,
            label.y = 1.02)
 ggsave(here::here("output/Columbia_paper_figs_analysis/",
-                  "Figure2.png"),
+                  "Figure2.tiff"),
                   height = 7, width = 4, dpi = 400)
 ```
 
@@ -1388,7 +1388,7 @@ pp <-
   labs(x = "Year")
 
 ggsave(here::here("output/Columbia_paper_figs_analysis/",
-                  "Figure3.png"),
+                  "Figure3.tiff"),
                   height = 5, width = 5, dpi = 400)
 
 ```
@@ -1502,7 +1502,7 @@ ggplot() +
   scale_fill_manual(values = "grey60")
 
 ggsave(here::here("output/Columbia_paper_figs_analysis/",
-                  "Figure4.png"),
+                  "Figure4.tiff"),
                   height = 4, width = 6, dpi = 400)
 ```
 
@@ -1675,7 +1675,7 @@ ggarrange (plot_mac, plot_hab, ncol = 1, nrow = 2, labels = c("A", "B"),
            heights = c(1, 1, 1))
 
 ggsave(here::here("output/Columbia_paper_figs_analysis/",
-                  "Figure5.png"),
+                  "Figure5.tiff"),
                   height = 7, width = 5, dpi = 400)
 ```
 
@@ -1763,7 +1763,7 @@ ggplot(eel_CPUE, aes(x = Year, y = Mean, color = Site))+
   scale_color_manual(values = c('TNC_25' = "#53AaD4", 'TNC_23' = 'orange', 'TNC_16' = 'grey60', 'TNC_19' = '#E0D42F'))
 
 ggsave(here::here("output/Columbia_paper_figs_analysis/",
-                  "Figure6.png"),
+                  "Figure6.tiff"),
                   height = 4, width = 6, dpi = 400)
 
 ```
@@ -1996,7 +1996,7 @@ annotate_figure(
   bottom = text_grob("Total length (cm)", size = 12, vjust = -0))
 
 ggsave(here::here("output/Columbia_paper_figs_analysis/",
-                  "Figure7.png"),
+                  "Figure7.tiff"),
                   height = 7, width = 5, dpi = 400)
 ```
 
@@ -2119,7 +2119,7 @@ geom_text(
   vjust = 1, size = 3)
 
 ggsave(here::here("output/Columbia_paper_figs_analysis/",
-                  "Figure8.png"),
+                  "Figure8.tiff"),
                   height = 4, width = 6, dpi = 400)
 ```
 
@@ -2254,7 +2254,7 @@ ggarrange(tnc_23_mig_temp, tnc_23_mig_do,
                          labels = c("A", "B"))
 
 ggsave(here::here("output/Columbia_paper_figs_analysis/",
-                  "Figure9.png"),
+                  "Figure9.tiff"),
                   height = 7, width = 5, dpi = 400)
 
 ```
