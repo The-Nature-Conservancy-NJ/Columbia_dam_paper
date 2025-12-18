@@ -2058,6 +2058,7 @@ ggplot(edna_mean, aes(x = Site,
                       color = factor(Year),
                       fill  = factor(Year),
                       group = Year)) +
+  geom_errorbar(aes(ymin = mean- sterror, ymax = mean + sterror), width = 0.15, position = position_dodge(width = 0.05))+
   geom_line(size = 1) +
   geom_point(size = 3) +
   labs(
@@ -2065,7 +2066,6 @@ ggplot(edna_mean, aes(x = Site,
     y = "Avg. A. Shad DNA Copies/L",
     shape = "Year"
   ) +
-  geom_errorbar(aes(ymin = mean- sterror, ymax = mean + sterror), width = 0.15, position = position_dodge(width = 0.05))+
   theme_classic() +
   theme(
     axis.line.x  = element_blank(),    
