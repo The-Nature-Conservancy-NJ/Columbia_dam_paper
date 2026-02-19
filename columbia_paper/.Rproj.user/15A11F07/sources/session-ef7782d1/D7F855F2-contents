@@ -1,0 +1,69 @@
+install.packages("dataRetrieval")
+library(dataRetrieval)
+
+
+#site number for blairstown, pCode for discharge, change start and end date to encompass desired dates
+siteNo <- "01443500"
+pCode <- "00060"
+start.date <- "2016-01-01"
+end.date <- "2024-12-01"
+
+#create datafile
+usgs <- readNWISuv(siteNumbers = siteNo, 
+                   parameterCd = pCode,
+                   startDate = start.date,
+                   endDate = end.date)
+
+#separate date and time
+usgs$date <- format(as.POSIXct(usgs$dateTime, format = "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d")
+
+usgs$time <- format(as.POSIXct(usgs$dateTime, format = "%Y-%m-%d %H:%M:%S"), "%H:%M:%S")
+
+#take maximum for each day
+max_day_flow <- usgs %>%
+  group_by(date) %>%
+  summarize(max = max(X_00060_00000))
+
+#subset to desired date range- maximum discharge for each day
+f <- subset(max_day_flow, date >= "2025-05-14" & date <= "2025-05-28")
+
+#average of maximum discharge from date range
+mean(f$max)
+
+max_day_flow_plot <- max_day_flow
+max_day_flow_plot$month <- month(max_day_flow_plot$date, label = TRUE, abbr = TRUE)
+max_day_flow_plot$year <- format(as.POSIXct(max_day_flow_plot$date, format = "%Y-%m-%d"), "%Y")
+#max_day_flow_plot <- max_day_flow_plot %>%
+  #filter(month %in% c("May", "Jun", "Jul", "Aug", "Sep"))
+#max_day_flow_plot$monthyear <- paste(max_day_flow_plot$month, max_day_flow_plot$year, sep = " ")
+
+max_day_flow_month <- max_day_flow_plot %>%
+  group_by(month, year) %>%
+  summarize(
+    mean_max = mean(max, na.rm = TRUE),
+    sd_max = sd(max, na.rm = TRUE),
+    n = sum(!is.na(max))
+  )
+max_day_flow_month$sterr <- max_day_flow_month$sd_max/(sqrt(max_day_flow_month$n))
+
+stage_bounds_usgs <- data.frame(
+  xmin = c(6, 6, 5, 4, 6, 5, 5, 5, 5),
+  xmax = c(12, 11, 11, 11, 9, 10, 10, 10, 10),
+  year = c(2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024)
+)
+  
+ggplot() +
+  geom_rect(data = stage_bounds_usgs, aes(xmin = xmin, xmax = xmax, ymin = -Inf, ymax = Inf), alpha = 0.3, show.legend = FALSE)+
+   geom_point(data = max_day_flow_month, aes(x = month, y = mean_max), color = "black", size = 1) +
+   geom_line(data = max_day_flow_month, aes(x = month, y = mean_max), group = 1)+
+   geom_errorbar(data = max_day_flow_month, aes(x = month, ymin = (mean_max - sterr), ymax = (mean_max + sterr)), width = 0.2)+
+   labs(x = "", y = "Mean Daily Maximum Discharge (CFS)")+
+   facet_wrap(~year)+
+   theme_classic()+
+   theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  scale_fill_manual(values = "grey60")
+
+ggsave("monthly_flow_per_year.png",
+       height = 4, width = 6, dpi = 400)
+
+  

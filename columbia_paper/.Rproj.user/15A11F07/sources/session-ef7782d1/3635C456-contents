@@ -1,0 +1,78 @@
+aw_temp <- read.csv("max_temp_col_v_air.csv", stringsAsFactors = FALSE)
+
+aw_temp_plot <- ggplot(aw_temp) +
+  aes(x = year, y = dif, color = site) +
+  geom_point()+
+  geom_line()
+  
+  #geom_smooth(method = lm, se = FALSE)
+aw_temp_plot
+
+aw_temp$stage <- ifelse(aw_temp$year %in% c(2016, 2017), "Before",
+                 ifelse(aw_temp$year %in% c(2018, 2019), "During", 
+                 ifelse(aw_temp$year %in% c(2020, 2021, 2022, 2023, 2024), "After", "NA")))
+
+
+
+aov_aw_temp <- aov(dif ~ stage * site * flow,
+              data = aw_temp
+)
+
+summary(aov_aw_temp)
+
+tukey_tempdiff <- TukeyHSD(aov_aw_temp, "stage")
+print(tukey_tempdiff)
+
+tukey_tempflow <- TukeyHSD(aov_aw_temp, "flow")
+print(tukey_tempflow)
+
+ggsave(aw_temp_plot, file="airtemp_watertemp_year_site.png", width=6, height=4)
+
+f <- expression("Difference ("*~degree*C*")")
+aw_temp$dif_rounded <- round(aw_temp$dif, 1)
+aw_temp$site <- factor(aw_temp$site, levels = c("TNC_25", "TNC_80", "TNC_81", "TNC_23"))
+
+#heat_map_dif <- ggplot(aw_temp)+
+  #geom_tile(aes(x = year, y = site, fill = dif), color = "black")+
+  #theme_classic()+
+  #scale_x_continuous(breaks = round(seq(min(aw_temp$year), max(aw_temp$year), by = 1),1))+
+  #scale_fill_gradient(low = "yellow", high = "purple")+
+  #geom_text(aes(x = year, y = site, label = dif), color = "black", size = 3)+
+  #labs(x = "Year", y = "Site", fill = f)
+
+heat_map_dif <- ggplot(aw_temp)+
+  geom_tile(aes(x = year, y = site, fill = dif), color = "black")+
+  theme_classic()+
+  scale_x_continuous(breaks = round(seq(min(aw_temp$year), max(aw_temp$year), by = 1),1))+
+  scale_fill_gradient(low = "grey30", high = "grey100")+
+  geom_text(aes(x = year, y = site, label = dif_rounded), color = "black", size = 4)+
+  labs(x = "Year", y = "Site", fill = f)
+
+heat_map_dif
+ggsave("heat_map_col_airwaterdif.png",
+       width = 6, height = 4, dpi = 400)
+
+yl <- expression(Discharge~ft^3/sec)
+
+
+flow_line <- ggplot(aw_temp)+
+  geom_line(aes(x = year, y = flow), size = 1.25)+
+  theme_classic()+
+  geom_errorbar(aes(x = year, y = flow, ymin = ll_flow, ymax = ul_flow), width =0.2)+
+  scale_x_continuous(breaks = round(seq(min(aw_temp$year), max(aw_temp$year), by = 1),1))+
+  scale_y_continuous(breaks = seq(100, 600, by = 100))+
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())+
+  labs(y = yl)
+
+                             
+flow_line
+
+library("ggpubr")
+ggarrange(flow_line, heat_map_dif + font("x.text", size = 10),
+                    ncol = 1, nrow = 2, align = "v", heights = c(1.5, 4),
+          labels = c("A", "B"))
+
+ggsave("heat_map_col_airwaterdif_flow.png",
+       width = 7, height = 7, dpi = 400)

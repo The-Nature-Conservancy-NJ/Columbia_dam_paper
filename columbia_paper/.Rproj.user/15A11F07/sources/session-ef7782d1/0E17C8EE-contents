@@ -1,0 +1,62 @@
+
+require(lubridate)
+require(dplyr)
+require(tidyr)
+require(ggplot2)
+install.packages("ggpubr")
+require(ggpubr)
+
+flow <- read.csv("flow.csv", stringsAsFactors = TRUE, fileEncoding = 'UTF-8-BOM')
+flow$datetime <- as.POSIXct(flow$datetime, format = "%m/%d/%Y %H:%M")
+
+
+# PLDEUR_2 ----------------------------------------------------------------
+
+PLDEUR_2 <- read.csv("TNC_19_PLDEUR_2_2024.csv", stringsAsFactors = TRUE, fileEncoding = 'UTF-8-BOM')
+
+PLDEUR_2 <- na.omit(PLDEUR_2)
+
+PLDEUR_2$datetime <- paste(PLDEUR_2$Date,PLDEUR_2$Time,sep=" ")
+
+PLDEUR_2$datetime <- as.POSIXct(PLDEUR_2$datetime, format = "%m/%d/%Y %H:%M")
+
+PLDEUR_2_sub <- subset(PLDEUR_2, select = c(Temperature..C..Temperature., Turbidity.NTU..Turbidity., datetime))
+
+flow$datetime <- as.POSIXct(flow$datetime, format = "%m/%d/%Y %H:%M")
+
+flow_turb_PLDEUR_2 <- left_join(PLDEUR_2_sub, flow, by = "datetime")
+
+#generates NA for any time = 00:00:00- do not use if trying to analyze by time but works for by date
+flow_turb_PLDEUR_2 <- separate(flow_turb_PLDEUR_2, datetime, c("date", "time"), sep = " ", remove = FALSE)
+
+flow_turb_PLDEUR_2_May1 <- flow_turb_PLDEUR_2[flow_turb_PLDEUR_2$date > "2024-04-30" & PLDEUR_2$date < "2024-05-15", ]
+
+a <- ggplot(flow_turb_PLDEUR_2_May1, mapping = aes(x = datetime))+
+       geom_line(mapping = aes(y = Turbidity.NTU..Turbidity.))+
+   theme_classic()+
+  theme(legend.position= "none")+
+  labs(x = "Date", y = "Turbidity (NTU)")
+b <- ggplot(flow_turb_PLDEUR_2_May1, mapping = aes(x = datetime))+
+  geom_line(mapping = aes(y = flow))+
+  theme_classic()+
+  theme(legend.position= "none")+
+  labs(x = "Date", y = "Flow (ft3/s)")
+ab <- ggarrange(b, a, nrow = 2, ncol = 1)
+ab
+
+
+flow_turb_PLDEUR_2_May2 <- flow_turb_PLDEUR_2[flow_turb_PLDEUR_2$date > "2024-05-16" & PLDEUR_2$date < "2024-05-31", ]
+
+#will replace previous plots
+a <- ggplot(flow_turb_PLDEUR_2_May2, mapping = aes(x = datetime))+
+  geom_line(mapping = aes(y = Turbidity.NTU..Turbidity.))+
+  theme_classic()+
+  theme(legend.position= "none")+
+  labs(x = "Date", y = "Turbidity (NTU)")
+b <- ggplot(flow_turb_PLDEUR_2_May2, mapping = aes(x = datetime))+
+  geom_line(mapping = aes(y = flow))+
+  theme_classic()+
+  theme(legend.position= "none")+
+  labs(x = "Date", y = "Flow (ft3/s)")
+ab <- ggarrange(b, a, nrow = 2, ncol = 1)
+ab
