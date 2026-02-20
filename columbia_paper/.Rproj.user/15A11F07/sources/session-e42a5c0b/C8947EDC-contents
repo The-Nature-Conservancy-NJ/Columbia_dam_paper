@@ -31,6 +31,7 @@ library(dataRetrieval)
 library(Kendall)
 library(ggeffects)
 library(dfoptim)
+library(plotrix)
 
 '%notin%' <- Negate('%in%')
 task_path <- "output/Columbia_paper_figs_analysis/"
@@ -2233,5 +2234,40 @@ ggarrange(tnc_23_mig_temp, tnc_23_mig_do,
 ggsave(here::here("output/Columbia_paper_figs_analysis/",
                   "Figure9.tiff"),
                   height = 7, width = 5, dpi = 400)
+
+```
+
+#Figure S3: turbidity over time
+```{r}
+colturb1 <- turb %>%
+  filter(site %in% c("TNC_23", "TNC_25")) %>%
+  mutate(monthf = as.factor(month)) %>%
+    group_by(site, yearf) %>%
+  summarize(mean_turb = mean(turb),
+            sterr = std.error(turb),
+            .groups = "drop")
+
+colturb1$site <- ifelse(colturb1$site %in% c("TNC_23"), "TNC_23 (Upstream)",
+                    ifelse(colturb1$site %in% c("TNC_25"), "TNC_25 (Downstream)", "NA"))
+
+colturb1$site <- factor(colturb1$site, levels = c("TNC_23 (Upstream)", "TNC_25 (Downstream)"))
+
+
+colturb1 %>%
+  ggplot() +
+  geom_errorbar(aes(x = yearf, ymin = mean_turb - sterr, ymax = mean_turb + sterr), width = 0.1)+
+  geom_abline(intercept = 0, slope = 0, lty = 3, color = "black")  +
+  geom_point(aes(y = mean_turb, x = yearf, color = site, shape = site), size = 4)+
+  scale_color_manual(values = c("black", "black"))+
+  scale_shape_manual(values = c(2,19))+
+  theme_classic() +
+  theme(text = element_text(size = 14),
+        legend.title = element_blank()) +
+  labs(x = "Year", y = "Mean annual turbitity (NTU)",
+       title = element_blank())
+
+ggsave(here::here("output/Columbia_paper_figs_analysis/",
+                  "FigureS3.tiff"),
+                  height = 5, width = 7, dpi = 400)
 
 ```
